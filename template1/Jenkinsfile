@@ -1,0 +1,48 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "pulling ......"
+		git changelog: false, poll: false, url: 'https://github.com/Unikoli/multihost.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+			echo "building ....."
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo "testing ...."
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sshagent (credentials: ['server']) {
+                    sh '''
+                       # Sync files to the Nginx document root
+                       rsync -avz --delete ./ root@192.168.30.53:/var/www/html/htmlsite/
+
+                       # (Optional) test and reload nginx if you also deploy configs
+                       ssh root@192.168.30.53 "nginx -t && systemctl reload nginx"
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Deployment successful!'
+        }
+        failure {
+            echo '❌ Deployment failed. Check logs.'
+        }
+    }
+}
+
